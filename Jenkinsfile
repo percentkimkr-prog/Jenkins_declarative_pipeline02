@@ -1,36 +1,46 @@
-// ✅ Jenkins Declarative Pipeline (Windows 환경, Groovy 실습 요구사항 반영)
-
 pipeline {
     agent any
 
-    // 🌍 사용자 환경 변수 설정 (Windows용)
     environment {
         PATH = "C:\\Program Files\\nodejs;C:\\Users\\0124e\\AppData\\Roaming\\npm;%PATH%"
     }
 
     stages {
 
-        // 🧹 0️⃣ 워크스페이스 초기화
         stage('Clean Workspace') {
             steps {
                 cleanWs()
             }
         }
 
-        // 🗂️ 1️⃣ Git 저장소 체크아웃
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        // 🧱 2️⃣ Build 단계 (필요 시 빌드 명령 추가)
+        // ✅ 2️⃣ Node.js 의존성 설치 단계 추가
+        stage('Install') {
+            steps {
+                bat '''
+                    echo ====== Install 단계 시작 ======
+                    if exist package.json (
+                        echo npm install 실행 중...
+                        npm ci || npm install
+                    ) else (
+                        echo package.json 파일이 없습니다. Install 단계 생략.
+                    )
+                    echo ====== Install 단계 완료 ======
+                '''
+            }
+        }
+
+        // 🧱 3️⃣ Build 단계
         stage('Build') {
             steps {
                 script {
                     bat '''
                         echo ====== Build 단계 시작 ======
-                        rem 예시: npm build 또는 다른 빌드 명령
                         if exist package.json (
                             echo package.json 파일 감지됨. npm build 실행 시도...
                             npm run build || echo 빌드 명령이 정의되어 있지 않음.
@@ -43,7 +53,7 @@ pipeline {
             }
         }
 
-        // 🧪 3️⃣ Test 단계 (hello.txt 검증)
+        // 🧪 4️⃣ Test 단계
         stage('Test') {
             steps {
                 script {
@@ -53,13 +63,11 @@ pipeline {
                             echo 실패: hello.txt 파일이 존재하지 않습니다.
                             exit /b 1
                         )
-
                         findstr /i /c:"hello" hello.txt >nul
                         if errorlevel 1 (
                             echo 실패: hello.txt에 'hello' 문자가 없습니다.
                             exit /b 1
                         )
-
                         echo 테스트 통과: hello.txt에 'hello' 문자가 존재합니다.
                         echo ====== Test 단계 완료 ======
                     '''
@@ -67,7 +75,7 @@ pipeline {
             }
         }
 
-        // 🚀 4️⃣ Run / Deploy 단계 (main 브랜치일 때만)
+        // 🚀 5️⃣ Run 단계
         stage('Run') {
             when {
                 branch 'main'
@@ -90,7 +98,6 @@ pipeline {
         }
     }
 
-    // 📋 파이프라인 완료 후 처리
     post {
         success {
             echo '✅ Pipeline 성공적으로 완료!'
@@ -103,4 +110,3 @@ pipeline {
         }
     }
 }
-

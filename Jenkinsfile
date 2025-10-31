@@ -8,12 +8,14 @@ pipeline {
         PATH = "C:\\Program Files\\nodejs;C:\\Users\\0124e\\AppData\\Roaming\\npm;%PATH%"
     }
 
-    options {
-        // 이전 빌드 잔여물 제거
-        cleanWs()
-    }
-
     stages {
+
+        // 🧹 0️⃣ Workspace 초기화
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
 
         // 🗂️ 1️⃣ Git 저장소에서 소스 코드 체크아웃
         stage('Checkout') {

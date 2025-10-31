@@ -1,8 +1,12 @@
 pipeline {
     agent any
 
+    environment {
+        NODE_ENV = 'production'
+    }
+
     stages {
-        stage('Checkout SCM') {
+        stage('Declarative: Checkout SCM') {
             steps {
                 checkout scm
             }
@@ -14,9 +18,21 @@ pipeline {
             }
         }
 
+        stage('Checkout') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    doGenerateSubmoduleConfigurations: false,
+                    extensions: [],
+                    userRemoteConfigs: [[url: 'https://github.com/percentkimkr-prog/Jenkins_declarative_pipeline02.git']]
+                ])
+            }
+        }
+
         stage('Install') {
             steps {
-                bat '''
+                bat """
                 echo ====== Install 단계 시작 ======
                 if exist package.json (
                     echo npm install 실행 중...
@@ -24,13 +40,13 @@ pipeline {
                 ) else (
                     echo package.json 파일이 없습니다. Install 단계 생략.
                 )
-                '''
+                """
             }
         }
 
         stage('Build') {
             steps {
-                bat '''
+                bat """
                 echo ====== Build 단계 시작 ======
                 if exist package.json (
                     echo package.json 파일 감지됨. npm run build 실행 시도...
@@ -38,31 +54,42 @@ pipeline {
                 ) else (
                     echo package.json 파일 없음. Build 단계 생략.
                 )
-                '''
+                """
             }
         }
 
         stage('Test') {
             steps {
-                bat '''
+                bat """
                 echo ====== Test 단계 시작 ======
+
+                REM src 폴더로 이동
+                cd src
+
+                REM hello.txt 존재 여부 확인
                 if not exist hello.txt (
-                    echo 실패: hello.txt 파일이 존재하지 않습니다.
+                    echo 실패: src\\hello.txt 파일이 존재하지 않습니다.
                     exit /b 1
                 )
 
-                REM Windows PowerShell로 "hello" 포함 여부 체크
-                powershell -Command "if (-not (Get-Content hello.txt | Select-String 'hello')) { exit 1 }"
-                '''
+                REM hello.txt 안에 'hello' 문자열이 있는지 확인
+                findstr /i /c:"hello" hello.txt >nul
+                if errorlevel 1 (
+                    echo 실패: src\\hello.txt에 'hello' 문자가 없습니다.
+                    exit /b 1
+                )
+
+                echo ✅ Test 단계 성공
+                """
             }
         }
 
         stage('Run') {
             when {
-                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
             }
             steps {
-                echo "Run 단계 실행"
+                echo "Run 단계 수행"
             }
         }
     }
